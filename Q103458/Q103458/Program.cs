@@ -9,13 +9,13 @@ namespace Q103458
 {
     class Program
     {
-
         //Answer to https://q.cnblogs.com/q/103458/
         static async Task Main(string[] args)
         {
             IServiceCollection services = new ServiceCollection();
             services.AddDbContext<MyDbContext>(options =>
             {
+                //options.UseSqlServer("server=.;database=blog_sample;Integrated Security=true");
                 options.UseInMemoryDatabase("blog_sample");
             });
 
@@ -23,32 +23,32 @@ namespace Q103458
 
             var writeDbContext = sp.GetService<MyDbContext>();
 
+            var tag = new Tag
+            {
+                TagName = "efcore"
+            };
+
             var post = new Post
             {
                 Title = "test title",
-                Content = "test body",
-                PostId = 1
+                Content = "test body"
             };
-            writeDbContext.Add(post);
-
-            var tag = new Tag
-            {
-                TagId = 2,
-                TagName = "efcore"
-            };
-            writeDbContext.Add(tag);
 
             var postTag = new PostTag
             {
-                PostId = 1,
-                TagId = 2
+                Tag = tag,
+                Post = post
             };
+
             writeDbContext.Add(postTag);
             writeDbContext.SaveChanges();
 
             var readDbContext = sp.GetService<MyDbContext>();
-            post = await readDbContext.Posts.FirstOrDefaultAsync();
-            Console.WriteLine(post.PostTags.FirstOrDefault().Tag.TagId); //output is 2
+            var queryPost = await readDbContext.Posts
+                .Include(p => p.PostTags)
+                .ThenInclude(pt => pt.Tag)
+                .FirstOrDefaultAsync();
+            Console.WriteLine(queryPost.PostTags[0].Tag.TagName);
         }
     }
 }
